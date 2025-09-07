@@ -1,0 +1,87 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.1)'
+        required: true
+        type: string
+      release_notes:
+        description: 'Release notes'
+        required: false
+        type: string
+      dmg_x64_url:
+        description: 'URL to x64 DMG file'
+        required: true
+        type: string
+      dmg_arm64_url:
+        description: 'URL to ARM64 DMG file'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download x64 DMG
+        run: |
+          curl -L -o "Ghostlive-${{ inputs.version }}.dmg" "${{ inputs.dmg_x64_url }}"
+          
+      - name: Download ARM64 DMG
+        run: |
+          curl -L -o "Ghostlive-${{ inputs.version }}-arm64.dmg" "${{ inputs.dmg_arm64_url }}"
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.version }}
+          release_name: "Ghostlive ${{ inputs.version }}"
+          body: |
+            ## 🚀 Ghostlive ${{ inputs.version }}
+            
+            ${{ inputs.release_notes }}
+            
+            ### Download Options:
+            - **Intel Mac:** Download `Ghostlive-${{ inputs.version }}.dmg`
+            - **Apple Silicon (M1/M2/M3):** Download `Ghostlive-${{ inputs.version }}-arm64.dmg`
+            
+            ### Installation:
+            1. Download the appropriate DMG for your Mac
+            2. Open the DMG file
+            3. Drag Ghostlive to Applications
+            4. Launch from Applications folder
+            
+            ---
+            🤖 **Built with security in mind** - All code is minified and obfuscated for protection.
+          draft: false
+          prerelease: false
+
+      - name: Upload x64 DMG Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: "./Ghostlive-${{ inputs.version }}.dmg"
+          asset_name: "Ghostlive-${{ inputs.version }}.dmg"
+          asset_content_type: application/x-apple-diskimage
+
+      - name: Upload ARM64 DMG Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: "./Ghostlive-${{ inputs.version }}-arm64.dmg"
+          asset_name: "Ghostlive-${{ inputs.version }}-arm64.dmg"
+          asset_content_type: application/x-apple-diskimage
